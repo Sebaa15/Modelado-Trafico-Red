@@ -11,8 +11,12 @@ def estimar_cola(llegadas, mediciones, mu,
     if llegadas.ndim != 1 or mediciones.ndim != 1:
         raise ValueError("Las entradas deben ser vectores.")
 
-    if len(llegadas) != len(mediciones) or len(llegadas) == 0:
-        raise ValueError("Las series deben tener igual longitud.")
+    if len(llegadas) == 0 or len(mediciones) not in (
+    len(llegadas), len(llegadas) + 1
+    ):
+        raise ValueError(
+            "Se requieren N o N+1 mediciones para N llegadas."
+         )    
 
     if dt <= 0 or mu <= 0 or Q < 0 or R <= 0:
         raise ValueError("Parametros invalidos.")
