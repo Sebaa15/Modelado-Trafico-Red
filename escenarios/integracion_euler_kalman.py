@@ -60,7 +60,8 @@ for nombre, (llegadas, capacidad, buffer) in escenarios.items():
         capacidad,
         dt=dt,
         Q=100,
-        R=2500
+        R=2500,
+        buffer_max=buffer
     )
 
     # 4. Evaluar los errores
