@@ -16,7 +16,7 @@ BASE = Path(__file__).resolve().parent
 
 EXPERIMENTOS = [
     ("Pruebas automatizadas del sistema", ["-m", "pytest", "tests", "-v"], "tests/test_integracion.py"),
-    ("Euler - escenarios A, B y C", ["euler/ejecutar_escenarios.py"], "euler/ejecutar_escenarios.py"),
+    ("Euler - escenarios A, B y C", ["-m", "euler.ejecutar_escenarios"], "euler/ejecutar_escenarios.py"),
     ("Red Bayesiana de contexto (Capa 2)", ["-m", "escenarios.inferencia_bayesiana"], "escenarios/inferencia_bayesiana.py"),
     ("Kalman - escenario D", ["-m", "escenarios.escenario_d"], "escenarios/escenario_d.py"),
     ("Calibracion Q/R inicial", ["-m", "escenarios.validacion_kalman"], "escenarios/validacion_kalman.py"),
@@ -27,6 +27,7 @@ EXPERIMENTOS = [
     ("Prediccion y decisiones", ["-m", "escenarios.prediccion_decisiones"], "escenarios/prediccion_decisiones.py"),
     ("Escenario E - Trafico CAIDA y micro-rafagas", ["-m", "escenarios.escenario_e"], "escenarios/escenario_e.py"),
     ("Pipeline integrado Bayes-Euler-Kalman", ["-m", "escenarios.pipeline_integrado"], "escenarios/pipeline_integrado.py"),
+    ("Dashboards unificados CAIDA y analisis visual", ["-m", "escenarios.visualizacion_unificada"], "escenarios/visualizacion_unificada.py"),
     ("Generacion del informe Kalman", ["-m", "escenarios.generar_informe_kalman"], "escenarios/generar_informe_kalman.py"),
 ]
 
@@ -36,6 +37,7 @@ def main():
     print("=" * 65, flush=True)
     entorno = os.environ.copy()
     entorno["MPLBACKEND"] = "Agg"
+    entorno["PYTHONPATH"] = str(BASE) + os.pathsep + entorno.get("PYTHONPATH", "")
     completados = 0
     for nombre, argumentos, archivo in EXPERIMENTOS:
         print(f"\nEjecutando: {nombre}", flush=True)

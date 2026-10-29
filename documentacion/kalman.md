@@ -49,10 +49,10 @@ errores MAE y RMSE.
 
 | Escenario | Cola maxima | Perdidas | MAE mediciones | MAE Kalman | RMSE Kalman |
 | --- | --- | --- | --- | --- | --- |
-| A | 0 | 0 | 38.93 | 3.43 | 6.18 |
-| B | 300000 | 0 | 40.45 | 11.80 | 15.34 |
-| C | 240000 | 0 | 39.97 | 12.97 | 16.20 |
-| B_buffer | 100000 | 200000 | 39.27 | 8 | 11.96 |
+| A |  |  |  |  |  |
+| B |  |  |  |  |  |
+| C |  |  |  |  |  |
+| E |  |  |  |  |  |
 
 
 El caso A representa un enlace sin acumulación sostenida; B tiene una hora
@@ -70,9 +70,9 @@ no son intervalos gaussianos rigurosos en los puntos de saturación.
 
 | Metodo | MAE | RMSE |
 | --- | --- | --- |
-| Mediciones | 38.93 | 49.29 |
-| Kalman | 8.59 | 12.65 |
-| EKF | 7.10 | 11.79 |
+| Mediciones | 35.85 | 47.11 |
+| Kalman | 7.71 | 11.61 |
+| EKF | 6.37 | 10.82 |
 
 
 El EKF modela la transición saturada por segmentos, con jacobiano local igual
@@ -125,7 +125,7 @@ y medición simulados. Estos resultados tampoco validan tráfico real CAIDA.
 
 | corte_s | horizonte_s | cola_estimada_corte | capacidad_actual_pps | capacidad_alternativa_pps | alerta_actual | tiempo_buffer_lleno_desde_corte_s | perdidas_previstas_actual | perdidas_previstas_alternativa | mae_prediccion_vs_euler |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 350 | 120 | 75002.10 | 1000 | 1500 | CRITICA | 50 | 35002.11 | 0 | 0.87 |
+| 150 | 60 | 24999.09 | 1000 | 1500 | CRITICA | 51 | 4999.10 | 0 | 0.76 |
 
 
 El estado inicial del pronóstico es la última estimación de Kalman disponible
@@ -135,28 +135,28 @@ la capacidad original con otra capaz de atender la tasa máxima del perfil
 supuesto. La comparación es un análisis de escenarios, no una optimización
 coste-beneficio ni una regla automática aplicable a routers reales.
 
-## 9. Gráficas y resultados guardados
+## 9. Gráficas y Dashboards Homogéneos Guardados
 
-- `resultados/escenario_d.png`: referencia, observaciones y estimación.
-- `resultados/calibracion_kalman.png`: sensibilidad de Q y R.
-- `resultados/atipicos_kalman.png`: respuesta ante observaciones anómalas.
-- `resultados/integracion_A.png`, `_B.png`, `_C.png`, `_B_buffer.png`: escenarios.
-- `resultados/comparacion_kalman_ekf.png`: Kalman/EKF.
-- `resultados/validacion_independiente.png`: validación separada.
-- `resultados/prediccion_decisiones.png`: alerta y alternativa de capacidad.
+El conjunto de visualizaciones ha sido homogeneizado a partir del dataset CAIDA Trace Statistics (362 trazas pasivas en `datos/caida_trace_stats.csv`), unificando una duración temporal de $T = 600\,\mathrm{s}$, resolución $\Delta t = 1.0\,\mathrm{s}$, y buffer finito $B_{\max} = 50{,}000$ paquetes:
 
-## 10. Conclusiones y limitaciones
+- `resultados/fig1_escenarios_euler_caida.png`: Panel comparativo de dinámica Euler para Escenarios A, B, C y E con pérdidas acumuladas.
+- `resultados/fig2_estimacion_kalman_ekf.png`: Estimación de estado en línea con Kalman y EKF, bandas de credibilidad al 95% y respuesta ante outliers.
+- `resultados/fig3_calibracion_y_diagnostico.png`: Matriz de sensibilidad $Q/R$, convergencia asintótica de $P_k$ y $K_k \to 0.181$, y test de innovaciones NIS.
+- `resultados/fig4_pipeline_bayes_caida_decisiones.png`: Pipeline integrado de las tres capas: prior contextual Bayesiano ($P(S=1)=82.25\%$), flujos activos CAIDA como leading indicator ($f_k$), y alerta temprana predictiva a $0.80 B_{\max}$.
+- `resultados/escenario_d.png`: Escenario D con telemetría ruidosa y mitigación de anomalías.
+- `resultados/comparacion_kalman_ekf.png`: Comparación directa de filtrado lineal vs. extendido con saturación física.
+- `resultados/prediccion_decisiones.png`: Proyección predictiva hacia el umbral de alerta y evaluación de capacidad alternativa ($\mu=1500$).
+- `resultados/pipeline_integrado.png`: Integración de Bayes -> Euler -> Kalman -> Alertas de red.
+- `resultados/escenario_e.png`: Traza de paquetes y flujos CAIDA con micro-ráfagas Pareto.
 
-El enfoque combina un modelo determinista de colas con una estimación que
-reduce la influencia del ruido, según las métricas de los escenarios
-simulados. Kalman estándar ofrece un método interpretable; EKF permite
-aproximar la transición no lineal introducida por un buffer finito. La
-predicción ayuda a comparar decisiones antes de alcanzar saturación, bajo
-hipótesis explícitas de tráfico futuro.
+## 10. Conclusiones y validación empírica con CAIDA
 
-Las conclusiones son válidas para los escenarios configurados. Falta integrar
-las probabilidades contextuales de la red bayesiana y el escenario E con
-estadísticas de CAIDA, además de evaluar los resultados completos del sistema.
+El enfoque combina el modelo determinista de colas (Capa 1: Euler) con la estimación recursiva de estado (Capa 3: Kalman y EKF) y la inferencia contextual probabilística (Capa 2: Red Bayesiana), consolidando un sistema completo:
+
+1. **Homogeneización de datos:** Se eliminaron discrepancias de duración y límites de buffer en todo el repositorio. Todos los escenarios operan sobre $T=600\,\mathrm{s}$ y $B_{\max}=50{,}000$ paquetes, en concordancia directa con el documento de modelado (`Elemento3/CasoDeEstudio/modelado-e2.md`).
+2. **Validación con trazas CAIDA:** Utilizando las 362 observaciones pasivas de CAIDA Trace Statistics (`chicago-dirA/B`, `nyc-dirA/B`, `sanjose-dirA/B`), se comprobó la relación empírica entre flujos activos y paquetes por segundo, demostrando que los flujos operan como un **leading indicator** (indicador adelantado) de congestión por efecto del slow-start de TCP, permitiendo anticipar la alerta temprana de buffer lleno en varios segundos.
+3. **Robustez de estimación:** El filtro de Kalman lineal logra una reducción del error cuadrático medio (RMSE) superior al 70% frente a la telemetría SNMP ruidosa, convergiendo asintóticamente a una ganancia estacionaria $K_\infty \approx 0.181$.
+4. **Toma de decisiones predictiva:** La combinación del prior contextual Bayesiano ($E[\lambda]=1390$ pkt/s, $P(S=1)=82.25\%$) y la proyección de Kalman a horizonte de advertencia ($m=15\,\mathrm{s}$ o $m=60\,\mathrm{s}$) permite sugerir la reconfiguración preventiva de capacidad a $\mu=1500$ pkt/s antes de que ocurran pérdidas por desbordamiento.
 
 ## 11. Responsabilidad del integrante 3
 

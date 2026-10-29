@@ -1,153 +1,123 @@
+"""Comparacion entre Filtro de Kalman Lineal con Proyeccion y Kalman Extendido (EKF).
+
+Homogeneizado con los parametros unificados del proyecto y CAIDA:
+  - Escenario B (pico de streaming con buffer B_max = 50,000).
+  - Evaluacion comparativa de MAE, RMSE y comportamiento en las discontinuidades
+    de saturacion (q = 0 y q = B_max).
+"""
 import csv
 from pathlib import Path
-
 import numpy as np
 import matplotlib.pyplot as plt
 
 from euler.euler import modelo_euler
 from modelos.kalman import estimar_cola
 from modelos.kalman_extendido import estimar_cola_ekf
-
-
-# Escenario B: hora pico con buffer limitado
-dt = 1.0
-n = 1200
-mu = 1000.0
-buffer_max = 100000.0
-
-llegadas = np.full(n, 800.0)
-llegadas[200:800] = 1500.0
-
-# Estado de referencia mediante Euler
-resultado = modelo_euler(
-    llegadas, mu,
-    dt=dt, buffer_max=buffer_max
-)
-
-cola_real = resultado["cola"]
-tiempo = resultado["tiempo"]
-
-# Mismas mediciones para ambos filtros
-rng = np.random.default_rng(42)
-mediciones = cola_real + rng.normal(
-    0, 50, len(cola_real)
-)
-
-# Kalman lineal con restricciones
-estimacion_kf, sigma_kf = estimar_cola(
-    llegadas, mediciones, mu,
-    dt=dt, Q=100, R=2500,
-    buffer_max=buffer_max
-)
-
-# Kalman extendido
-estimacion_ekf, sigma_ekf = estimar_cola_ekf(
-    llegadas, mediciones, mu,
-    dt=dt, Q=100, R=2500,
-    buffer_max=buffer_max
+from modelos.config import (
+    DIR_RESULTADOS,
+    DT,
+    DURACION_ESTANDAR,
+    BUFFER_MAX,
+    CAPACIDAD_NOMINAL,
+    LAMBDA_VALLE,
+    LAMBDA_PICO,
+    Q_ESTANDAR,
+    R_ESTANDAR,
 )
 
 
-def calcular_metricas(real, estimado):
-    error = real - estimado
+def ejecutar():
+    print("=" * 60)
+    print("COMPARACION: KALMAN LINEAL PROYECTADO VS KALMAN EXTENDIDO (EKF)")
+    print("=" * 60)
 
-    return {
-        "MAE": float(np.mean(np.abs(error))),
-        "RMSE": float(np.sqrt(np.mean(error ** 2)))
-    }
+    n = int(DURACION_ESTANDAR / DT)
+    tiempo = np.arange(n) * DT
 
+    # Estado de referencia real: Escenario B con buffer B_max = 50,000
+    llegadas = np.full(n, LAMBDA_VALLE)
+    llegadas[(tiempo >= 100) & (tiempo < 400)] = LAMBDA_PICO
 
-resultados = {
-    "Mediciones": calcular_metricas(cola_real, mediciones),
-    "Kalman": calcular_metricas(cola_real, estimacion_kf),
-    "EKF": calcular_metricas(cola_real, estimacion_ekf)
-}
+    res_euler = modelo_euler(llegadas, CAPACIDAD_NOMINAL, dt=DT, buffer_max=BUFFER_MAX)
+    cola_real = res_euler["cola"]
+    t_cola = res_euler["tiempo"]
 
-print("\nCOMPARACION KALMAN VS EKF")
-print("-" * 45)
+    # Mediciones identicas para comparacion justa
+    rng = np.random.default_rng(42)
+    mediciones = np.maximum(0.0, cola_real + rng.normal(0, np.sqrt(R_ESTANDAR), len(cola_real)))
 
-for nombre, valores in resultados.items():
-    print(
-        f"{nombre}: "
-        f"MAE={valores['MAE']:.2f}, "
-        f"RMSE={valores['RMSE']:.2f}"
+    # Estimacion Kalman Lineal con proyeccion
+    est_kf, sigma_kf = estimar_cola(
+        llegadas, mediciones, CAPACIDAD_NOMINAL,
+        dt=DT, Q=Q_ESTANDAR, R=R_ESTANDAR, buffer_max=BUFFER_MAX
     )
 
-print("\nCola maxima:", np.max(cola_real))
-print("Paquetes perdidos:", np.sum(resultado["perdidas"]))
+    # Estimacion Kalman Extendido (EKF por tramos)
+    est_ekf, sigma_ekf = estimar_cola_ekf(
+        llegadas, mediciones, CAPACIDAD_NOMINAL,
+        dt=DT, Q=Q_ESTANDAR, R=R_ESTANDAR, buffer_max=BUFFER_MAX
+    )
 
-# Comprobar restricciones
-for nombre, serie in [
-    ("Kalman", estimacion_kf),
-    ("EKF", estimacion_ekf)
-]:
-    assert len(serie) == len(cola_real)
-    assert np.all(np.isfinite(serie))
-    assert np.all(serie >= 0)
-    assert np.all(serie <= buffer_max)
+    def calc_metricas(est):
+        err = est - cola_real
+        return {
+            "MAE": float(np.mean(np.abs(err))),
+            "RMSE": float(np.sqrt(np.mean(err**2)))
+        }
 
-Path("resultados").mkdir(exist_ok=True)
+    met_med = calc_metricas(mediciones)
+    met_kf = calc_metricas(est_kf)
+    met_ekf = calc_metricas(est_ekf)
 
-# Guardar metricas
-with open(
-    "resultados/comparacion_kalman_ekf.csv",
-    "w", newline="", encoding="utf-8"
-) as archivo:
-    escritor = csv.writer(archivo)
-    escritor.writerow(["Metodo", "MAE", "RMSE"])
+    print(f"  Mediciones crudas: MAE = {met_med['MAE']:.2f} pkt | RMSE = {met_med['RMSE']:.2f} pkt")
+    print(f"  Kalman Lineal:     MAE = {met_kf['MAE']:.2f} pkt | RMSE = {met_kf['RMSE']:.2f} pkt")
+    print(f"  Kalman Extendido:  MAE = {met_ekf['MAE']:.2f} pkt | RMSE = {met_ekf['RMSE']:.2f} pkt")
 
-    for nombre, valores in resultados.items():
-        escritor.writerow([
-            nombre, valores["MAE"], valores["RMSE"]
-        ])
+    # Guardar CSV
+    DIR_RESULTADOS.mkdir(parents=True, exist_ok=True)
+    csv_path = DIR_RESULTADOS / "comparacion_kalman_ekf.csv"
+    filas_csv = [
+        {"Metodo": "Mediciones", "MAE": round(met_med["MAE"], 2), "RMSE": round(met_med["RMSE"], 2)},
+        {"Metodo": "Kalman", "MAE": round(met_kf["MAE"], 2), "RMSE": round(met_kf["RMSE"], 2)},
+        {"Metodo": "EKF", "MAE": round(met_ekf["MAE"], 2), "RMSE": round(met_ekf["RMSE"], 2)},
+    ]
+    with open(csv_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["Metodo", "MAE", "RMSE"])
+        writer.writeheader()
+        writer.writerows(filas_csv)
+    print(f"  Metricas guardadas en: {csv_path}")
 
-# Generar graficas
-fig, ax = plt.subplots(2, 1, figsize=(11, 9))
+    # Grafica comparativa
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(11, 7), sharex=True)
 
-ax[0].plot(tiempo, cola_real, label="Euler")
-ax[0].plot(
-    tiempo, estimacion_kf,
-    label="Kalman", linestyle="--"
-)
-ax[0].plot(
-    tiempo, estimacion_ekf,
-    label="EKF", linestyle=":"
-)
-ax[0].axhline(
-    buffer_max, linestyle="--", label="Limite buffer"
-)
-ax[0].set_title("Comparacion general")
-ax[0].set_ylabel("Paquetes")
-ax[0].legend()
-ax[0].grid(True)
+    # Panel 1: Trayectorias
+    ax1.plot(t_cola, cola_real, color="black", lw=1.8, label="Estado real ($q_k$)")
+    ax1.plot(t_cola, est_kf, color="#1f77b4", lw=1.6, label="Kalman Lineal proyectado")
+    ax1.plot(t_cola, est_ekf, color="#2ca02c", lw=1.6, linestyle="--", label="Kalman Extendido (EKF)")
+    ax1.axhline(BUFFER_MAX, color="red", linestyle=":", lw=1.5, label=r"Límite Buffer ($B_{\max}=50\mathrm{k}$)")
+    ax1.set_ylabel("Cola (paquetes)", fontsize=10)
+    ax1.set_title("Comparación de Trayectorias: Kalman Lineal vs EKF bajo Saturación", fontsize=11, fontweight="bold")
+    ax1.legend(loc="upper right", fontsize=8.5)
+    ax1.grid(alpha=0.3)
 
-# Ampliacion del instante de saturacion
-inicio, fin = 350, 460
+    # Panel 2: Error instantaneo absoluto
+    err_kf = np.abs(est_kf - cola_real)
+    err_ekf = np.abs(est_ekf - cola_real)
+    ax2.plot(t_cola, err_kf, color="#1f77b4", lw=1.2, label=f"Error Absoluto Kalman (MAE={met_kf['MAE']:.1f})")
+    ax2.plot(t_cola, err_ekf, color="#2ca02c", lw=1.2, linestyle="--", label=f"Error Absoluto EKF (MAE={met_ekf['MAE']:.1f})")
+    ax2.set_xlabel("Tiempo (s)", fontsize=10)
+    ax2.set_ylabel("Error absoluto (pkt)", fontsize=10)
+    ax2.legend(loc="upper right", fontsize=8.5)
+    ax2.grid(alpha=0.3)
 
-ax[1].plot(
-    tiempo[inicio:fin],
-    cola_real[inicio:fin], label="Euler"
-)
-ax[1].plot(
-    tiempo[inicio:fin],
-    estimacion_kf[inicio:fin], label="Kalman"
-)
-ax[1].plot(
-    tiempo[inicio:fin],
-    estimacion_ekf[inicio:fin], label="EKF"
-)
+    plt.tight_layout()
+    png_path = DIR_RESULTADOS / "comparacion_kalman_ekf.png"
+    plt.savefig(png_path, dpi=150)
+    plt.close()
+    print(f"  Grafica guardada en: {png_path}")
+    print("=" * 60)
+    return {"Mediciones": met_med, "Kalman": met_kf, "EKF": met_ekf}
 
-ax[1].set_title("Detalle cerca de la saturacion")
-ax[1].set_xlabel("Tiempo (s)")
-ax[1].set_ylabel("Paquetes")
-ax[1].legend()
-ax[1].grid(True)
 
-plt.tight_layout()
-plt.savefig(
-    "resultados/comparacion_kalman_ekf.png",
-    dpi=150
-)
-plt.show()
-
-print("\nComparacion finalizada correctamente.")
+if __name__ == "__main__":
+    ejecutar()

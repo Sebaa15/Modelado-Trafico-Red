@@ -1,0 +1,5 @@
+Escenario,Capacidad_pps,Buffer_Max_pkt,Utilizacion_Max_pct,Utilizacion_Media_pct,Cola_Maxima_pkt,Cola_Final_pkt,Perdidas_Totales_pkt,Instante_Saturacion_s
+A,1000.0,50000.0,80.0,80.0,0.0,0.0,0.0,N/A
+B,1000.0,50000.0,150.0,115.0,50000.0,10000.0,100000.0,200.0
+C,600.0,50000.0,133.33,133.33,50000.0,50000.0,70000.0,250.0
+B_sin_buffer,1000.0,Infinito,150.0,115.0,150000.0,110000.0,0.0,N/A
