@@ -1,0 +1,11 @@
+Metrica,Valor
+Mu_Calibrada_pps,1599.7
+Mu_Nominal_pps,1600.0
+Utilizacion_Maxima,14.85
+Cola_Maxima_pkt,50000.0
+Perdidas_Totales_pkt,90690.3
+RMSE_Medicion_pkt,1009.0
+RMSE_Kalman_pkt,190.1
+Saturacion_Real_s,147.0
+Alerta_Solo_Paquetes_s,119.0
+Alerta_Con_Flujos_s,115.0

@@ -1,0 +1,13 @@
+Capa,Metrica,Valor
+2_Bayes,Prob_Saturacion_Contextual,0.8225
+2_Bayes,Lambda_Esperada_pps,1390.0
+1_Euler,Esc_A_ColaMax_pkt,0.0
+1_Euler,Esc_B_ColaMax_pkt,50000.0
+1_Euler,Esc_B_Perdidas_pkt,100000.0
+1_Euler,Esc_C_ColaMax_pkt,50000.0
+1_Euler,Esc_C_Perdidas_pkt,69800.0
+3_Kalman,RMSE_Medicion_pkt,2424.27
+3_Kalman,RMSE_Kalman_pkt,498.28
+3_Kalman,Reduccion_Ruido_pct,79.45
+Decision,Primera_Alerta_s,160.0
+Decision,Saturacion_Real_s,195.0

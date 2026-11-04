@@ -1,0 +1,5 @@
+Escenario,Cola maxima,Perdidas,MAE mediciones,MAE Kalman,RMSE Kalman,Cobertura aproximada %
+A,0.0,0.0,38.93,3.43,6.18,100.0
+B,300000.0,0.0,40.45,11.8,15.34,99.25
+C,240000.0,0.0,39.97,12.97,16.2,99.25
+B_buffer,100000.0,200000.0,39.27,8.0,11.96,99.33

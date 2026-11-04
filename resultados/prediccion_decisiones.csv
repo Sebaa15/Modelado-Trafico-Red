@@ -1,0 +1,2 @@
+corte_s,horizonte_s,cola_estimada_corte,capacidad_actual_pps,capacidad_alternativa_pps,alerta_actual,tiempo_buffer_lleno_desde_corte_s,perdidas_previstas_actual,perdidas_previstas_alternativa,mae_prediccion_vs_euler
+350,120.0,75002.105,1000.0,1500.0,CRITICA,50.0,35002.105,0.0,0.87
